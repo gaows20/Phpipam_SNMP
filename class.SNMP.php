@@ -9,7 +9,17 @@
 
 class phpipamSNMP extends Common_functions {
 
-	/**
+    /**
+     * Device manufacturer
+     *
+     * (default value: "")
+     *
+     * @var string
+     * @access private
+     */
+    private $manufacturer = "";
+
+    /**
 	 * Saves last result value
 	 *
 	 * (default value: false)
@@ -245,7 +255,24 @@ class phpipamSNMP extends Common_functions {
     		'CISCO-VTP-MIB::vtpVlanName'          => '.1.3.6.1.4.1.9.9.46.1.3.1.1.4',
 
     		'MPLS-VPN-MIB::mplsVpnVrfDescription'        => '.1.3.6.1.3.118.1.2.2.1.2',
-    		'MPLS-VPN-MIB::mplsVpnVrfRouteDistinguisher' => '.1.3.6.1.3.118.1.2.2.1.3'
+    		'MPLS-VPN-MIB::mplsVpnVrfRouteDistinguisher' => '.1.3.6.1.3.118.1.2.2.1.3',
+
+            // 这里添加厂商对应的oid
+            // Add H3C oids
+            'HH3C-VLAN-MIB::hh3cdot1qVlanTable'   => '.1.3.6.1.4.1.25506.8.35.2.1.1.1',
+            //'HH3C-VLAN-MIB::hh3cdot1qVlanIndex'   => '.1.3.6.1.4.1.25506.8.35.2.1.1.1',
+            //'HH3C-VLAN-MIB::hh3cdot1qVlanName'    => '.1.3.6.1.4.1.25506.8.35.2.1.1.1.2',
+            //'HH3C-VLAN-MIB::hh3cdot1qVlanPortIndexs' => '.1.3.6.1.4.1.25506.8.35.2.1.1.1.19',
+            
+            // Add Huawei oids
+            //'HUAWEI-VLAN-MIB::hwVlanName' => '.1.3.6.1.4.1.2011.5.25.42.3.1.1.1.2',
+
+            // Add HIKvision oids
+            //'HIKVISION-VLAN-MIB::hikVlanName' =>
+            
+            // Add Inspur oids
+            //'INSPUR-VLAN-MIB::inspurVlanName' => 
+
     	];
 	}
 
@@ -352,6 +379,10 @@ class phpipamSNMP extends Common_functions {
     	$this->set_snmp_timeout ($device->snmp_timeout);
         # set SNMPv3 security
         $this->set_snmpv3_security ($device);
+        # 保存制造商信息
+        if (isset($device->custom_manufacturer)) {
+            $this->manufacturer = strtolower($device->custom_manufacturer);
+        }
 	}
 
 	/**
@@ -760,17 +791,79 @@ class phpipamSNMP extends Common_functions {
         // init
         $this->connection_open ();
 
-        // fetch
-        $res1 = $this->snmp_walk ( "CISCO-VTP-MIB::vtpVlanName", "1" );
+        // 根据制造商选择OID和解析方式
+        $oid = "CISCO-VTP-MIB::vtpVlanName"; // 默认OID
+        $parser = "default"; // 默认解析方式
+    
+        switch (strtolower($this->manufacturer)) {
+            case 'h3c':
+                $oid = "HH3C-VLAN-MIB::hh3cdot1qVlanTable";
+                $parser = "h3c";
+                break;
+            case 'huawei':
+                // 华为设备的OID和解析方式
+                // $oid = "HUAWEI-VLAN-MIB::hwVlanName";
+                // $parser = "huawei";
+                break;
+            case 'hikvision':
+                // 海康设备的OID和解析方式
+                // $oid = "HIKVISION-VLAN-MIB::hikVlanName";
+                // $parser = "hikvision";
+                break;
+            case 'inspur':
+                // 浪潮设备的OID和解析方式
+                // $oid = "INSPUR-VLAN-MIB::inspurVlanName";
+                // $parser = "inspur";
+                break;
+        }
 
         // parse result
-        foreach ($res1 as $k=>$r) {
-            // set number
-            $k = str_replace($this->snmp_oids['CISCO-VTP-MIB::vtpVlanName'].'.1.', "", $k);
-            $k = array_pop(pf_explode(".", $k));
-            // set value
-            $r  = trim(str_replace("\"","",substr($r, strpos($r, ":")+2)));
-            $res[$k] = $r;
+        $res = [];
+
+        switch ($parser) {
+            case "h3c":
+                // H3C特定解析：OID末尾为VLAN ID，值为"VLAN XXXX" 
+                // fetch
+                $res1 = $this->snmp_walk ($oid, "2");
+                foreach ($res1 as $k => $r) {
+                    // set number
+                    $k = str_replace($this->snmp_oids[$oid].'.2.', "", $k);
+                    $k = array_pop(pf_explode(".", $k));
+                    // set value
+                    $r  = trim(str_replace("\"","",substr($r, strpos($r, ":")+2)));
+                    $res[$k] = $r;
+                }
+                break;
+            case "huawei":
+                // 华为设备解析逻辑
+                // foreach ($res1 as $k => $r) {
+                //     // 华为特定解析逻辑
+                // }
+                // break;
+            case "hikvision":
+                // 海康设备解析逻辑
+                // foreach ($res1 as $k => $r) {
+                //     // 海康特定解析逻辑
+                // }
+                // break;
+            case "inspur":
+                // 浪潮设备解析逻辑
+                // foreach ($res1 as $k => $r) {
+                //     // 浪潮特定解析逻辑
+                // }
+                // break;
+            default: // 默认解析（Cisco等）
+                // fetch
+                $res1 = $this->snmp_walk ($oid, "1");
+                // parse result
+                foreach ($res1 as $k=>$r) {
+                    // set number
+                    $k = str_replace($this->snmp_oids[$oid].'.1.', "", $k);
+                    $k = array_pop(pf_explode(".", $k));
+                    // set value
+                    $r  = trim(str_replace("\"","",substr($r, strpos($r, ":")+2)));
+                    $res[$k] = $r;
+                }
         }
 
         // save result
