@@ -258,18 +258,17 @@ class phpipamSNMP extends Common_functions {
     		'MPLS-VPN-MIB::mplsVpnVrfRouteDistinguisher' => '.1.3.6.1.3.118.1.2.2.1.3',
 
             // 这里添加厂商对应的oid
-            // Add H3C oids
+            // Add H3C/hikvision oids
             'HH3C-VLAN-MIB::hh3cdot1qVlanTable'   => '.1.3.6.1.4.1.25506.8.35.2.1.1.1',
-            //'HH3C-VLAN-MIB::hh3cdot1qVlanIndex'   => '.1.3.6.1.4.1.25506.8.35.2.1.1.1',
-            //'HH3C-VLAN-MIB::hh3cdot1qVlanName'    => '.1.3.6.1.4.1.25506.8.35.2.1.1.1.2',
+            //'HH3C-VLAN-MIB::hh3cdot1qVlanIndex' => '.1.3.6.1.4.1.25506.8.35.2.1.1.1',
+            //'HH3C-VLAN-MIB::hh3cdot1qVlanName'  => '.1.3.6.1.4.1.25506.8.35.2.1.1.1.2',
             //'HH3C-VLAN-MIB::hh3cdot1qVlanPortIndexs' => '.1.3.6.1.4.1.25506.8.35.2.1.1.1.19',
             
             // Add Huawei oids
             //'HUAWEI-VLAN-MIB::hwVlanName' => '.1.3.6.1.4.1.2011.5.25.42.3.1.1.1.2',
 
             // Add HIKvision oids
-            //'HIKVISION-VLAN-MIB::hikVlanName' =>
-            
+
             // Add Inspur oids
             //'INSPUR-VLAN-MIB::inspurVlanName' => 
 
@@ -797,6 +796,7 @@ class phpipamSNMP extends Common_functions {
     
         switch (strtolower($this->manufacturer)) {
             case 'h3c':
+            case 'hikvision':
                 $oid = "HH3C-VLAN-MIB::hh3cdot1qVlanTable";
                 $parser = "h3c";
                 break;
@@ -804,11 +804,6 @@ class phpipamSNMP extends Common_functions {
                 // 华为设备的OID和解析方式
                 // $oid = "HUAWEI-VLAN-MIB::hwVlanName";
                 // $parser = "huawei";
-                break;
-            case 'hikvision':
-                // 海康设备的OID和解析方式
-                // $oid = "HIKVISION-VLAN-MIB::hikVlanName";
-                // $parser = "hikvision";
                 break;
             case 'inspur':
                 // 浪潮设备的OID和解析方式
@@ -822,7 +817,8 @@ class phpipamSNMP extends Common_functions {
 
         switch ($parser) {
             case "h3c":
-                // H3C特定解析：OID末尾为VLAN ID，值为"VLAN XXXX" 
+            case "hikvision":
+                // H3C/hikvision特定解析：OID末尾为VLAN ID，值为"VLAN XXXX" 
                 // fetch
                 $res1 = $this->snmp_walk ($oid, "2");
                 foreach ($res1 as $k => $r) {
@@ -838,12 +834,6 @@ class phpipamSNMP extends Common_functions {
                 // 华为设备解析逻辑
                 // foreach ($res1 as $k => $r) {
                 //     // 华为特定解析逻辑
-                // }
-                // break;
-            case "hikvision":
-                // 海康设备解析逻辑
-                // foreach ($res1 as $k => $r) {
-                //     // 海康特定解析逻辑
                 // }
                 // break;
             case "inspur":
